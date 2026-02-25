@@ -1,0 +1,62 @@
+; CEC TX PIO プログラム — HDMI CEC 用オープンドレイン・ビットバング
+;
+; TX FIFO からシンボルごとに 32 ビットワードを消費:
+;   bits [31:16] = X_low  = T_low_us  - 3
+;   bits [15:0]  = X_high = T_high_us - 4
+;
+; オープンドレイン・エミュレーション:
+;   set pindirs, 1  => GPIO 方向 = 出力 (ピン出力=0 → バスを LOW に駆動)
+;   set pindirs, 0  => GPIO 方向 = 入力 (Hi-Z; 外部プルアップ → HIGH)
+;
+; クロック: 1 サイクル = 1 µs  (分周比 = sys_clock_hz / 1e6)
+;
+; 命令数: 7
+
+.program cec_tx
+
+.wrap_target
+    pull block          ; FIFO から次のシンボルワードを取得 (空なら待機)
+    out x, 16           ; X = 上位 16 ビット = X_low (LOW 相カウンタ)
+    set pindirs, 1      ; バスを LOW に駆動
+loop_low:
+    jmp x-- loop_low    ; X_low+1 サイクル待機
+    out x, 16           ; X = 下位 16 ビット = X_high (HIGH 相カウンタ)
+    set pindirs, 0      ; バスを解放 (Hi-Z → プルアップ → HIGH)
+loop_high:
+    jmp x-- loop_high   ; X_high+1 サイクル待機
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void cec_tx_program_init(PIO pio, uint sm, uint offset, uint gpio) {
+    // GPIO パッドを PIO 用に設定
+    pio_gpio_init(pio, gpio);
+
+    // ピン出力レジスタを LOW に設定 (オープンドレイン: pindirs=1 で LOW 駆動)
+    pio_sm_set_pins_with_mask(pio, sm, 0u, 1u << gpio);
+
+    // 初期方向を入力 (Hi-Z) に設定 — バスへのグリッチを防止
+    pio_sm_set_consecutive_pindirs(pio, sm, gpio, 1, false);
+
+    // ステートマシン構成を生成
+    pio_sm_config c = cec_tx_program_get_default_config(offset);
+
+    // SET 命令で `gpio` から 1 ピン分の pindirs を制御
+    sm_config_set_set_pins(&c, gpio, 1);
+
+    // OSR 左シフト: 1回目の out x,16 で bits[31:16]、2回目で bits[15:0] を取得
+    sm_config_set_out_shift(&c, false, false, 32);
+
+    // クロック分周: PIO 1 サイクル = 1 µs
+    float div = (float)clock_get_hz(clk_sys) / 1000000.0f;
+    sm_config_set_clkdiv(&c, div);
+
+    // SM を初期化 (無効状態で開始)
+    pio_sm_init(pio, sm, offset, &c);
+
+    // GPIO を SIO に戻す — 送信間で RX の GPIO IRQ が使えるように
+    gpio_set_function(gpio, GPIO_FUNC_SIO);
+}
+%}
