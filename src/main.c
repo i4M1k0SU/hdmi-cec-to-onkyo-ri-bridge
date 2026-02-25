@@ -380,6 +380,21 @@ int main(void) {
     // バス安定待ち
     sleep_ms(5000);
 
+    // ---- 論理アドレスネゴシエーション ----
+    // ポーリング: src=dst=CEC_LA のヘッダのみ送信。
+    // NACK (false) = アドレス空き → 使用可能。ACK (true) = 他デバイスが使用中。
+    {
+        uint8_t poll = hdr(CEC_LA, CEC_LA);
+        bool addr_in_use = cec_tx_send_bytes(&poll, 1);
+        if (addr_in_use) {
+            printf("BOOT: LA %u is in use! Falling back to unregistered (15)\n", CEC_LA);
+            cec_rx_set_logical_addr(CEC_ADDR_BROADCAST);
+            cec_rx_enable_ack(false);
+        } else {
+            printf("BOOT: LA %u is free, claimed\n", CEC_LA);
+        }
+    }
+
     // ---- ブートアナウンス ----
     bool ok;
     ok = tx_report_physical_addr();
