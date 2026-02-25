@@ -37,6 +37,10 @@ pico_sdk_init()
 file(GLOB_RECURSE SOURCE src/*.c)
 add_executable(hdmi-cec-to-onkyo-ri ${SOURCE})
 
+pico_generate_pio_header(hdmi-cec-to-onkyo-ri
+    ${CMAKE_CURRENT_LIST_DIR}/src/cec/cec_tx.pio
+)
+
 pico_set_program_name(hdmi-cec-to-onkyo-ri "hdmi-cec-to-onkyo-ri")
 pico_set_program_version(hdmi-cec-to-onkyo-ri "0.1")
 
@@ -55,8 +59,9 @@ target_include_directories(hdmi-cec-to-onkyo-ri PRIVATE
 )
 
 # Add any user requested libraries
-target_link_libraries(hdmi-cec-to-onkyo-ri 
+target_link_libraries(hdmi-cec-to-onkyo-ri
     hardware_gpio
+    hardware_pio
 )
 
 pico_add_extra_outputs(hdmi-cec-to-onkyo-ri)
