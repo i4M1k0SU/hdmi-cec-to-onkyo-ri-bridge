@@ -62,6 +62,7 @@ target_include_directories(hdmi-cec-to-onkyo-ri PRIVATE
 target_link_libraries(hdmi-cec-to-onkyo-ri
     hardware_gpio
     hardware_pio
+    hardware_watchdog
 )
 
 pico_add_extra_outputs(hdmi-cec-to-onkyo-ri)

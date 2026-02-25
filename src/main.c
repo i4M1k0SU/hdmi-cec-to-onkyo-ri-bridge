@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "pico/stdlib.h"
 #include "pico/stdio_usb.h"
+#include "hardware/watchdog.h"
 #include "cec/cec_rx.h"
 #include "cec/cec_tx.h"
 #include "cec/cec_opcode.h"
@@ -21,6 +22,7 @@
 
 #define RI_DEBOUNCE_US        2000000
 #define RI_INPUT_SEL_DELAY_MS 200
+#define WATCHDOG_TIMEOUT_MS   5000
 
 // ---- デバイス状態 ----
 
@@ -389,8 +391,14 @@ int main(void) {
 
     // power_on は false のまま — 初回の SAM Request で ri_power_on を発火させる
 
+    // ---- ウォッチドッグ有効化 ----
+    watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
+    printf("Watchdog enabled (%d ms)\n", WATCHDOG_TIMEOUT_MS);
+
     // ---- メッセージループ ----
     while (true) {
+        watchdog_update();
+
         cec_frame_t f = {0};
         if (!cec_rx_poll_frame(&f)) {
             tight_loop_contents();
