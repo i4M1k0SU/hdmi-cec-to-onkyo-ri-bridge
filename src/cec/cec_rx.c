@@ -42,7 +42,9 @@ static int64_t ack_release_cb(alarm_id_t id, void* user_data) {
 }
 
 static inline void ack_hold_start(void) {
-    if (g_ack_holding) return;
+    if (g_ack_holding) {
+        return;
+    }
 
     g_ack_holding = true;
     cec_od_drive_low();
@@ -85,7 +87,9 @@ static inline bool should_ack_header(uint8_t header_byte) {
 }
 
 static void cec_irq(uint gpio, uint32_t events) {
-    if (gpio != cec_od_gpio()) return;
+    if (gpio != cec_od_gpio()) {
+        return;
+    }
 
     uint64_t now = time_us_64();
     bool level = cec_od_read();
@@ -137,7 +141,9 @@ static void cec_irq(uint gpio, uint32_t events) {
                     ack_hold_start();
                 }
 
-                if (s_len < sizeof(s_buf)) s_buf[s_len++] = s_cur;
+                if (s_len < sizeof(s_buf)) {
+                    s_buf[s_len++] = s_cur;
+                }
 
                 if (s_first_byte) {
                     s_header = s_cur;
@@ -150,7 +156,9 @@ static void cec_irq(uint gpio, uint32_t events) {
                 if (s_eom) {
                     if (!g_frame_ready) {
                         g_frame_len = s_len;
-                        for (uint8_t i = 0; i < s_len; i++) g_frame_bytes[i] = s_buf[i];
+                        for (uint8_t i = 0; i < s_len; i++) {
+                            g_frame_bytes[i] = s_buf[i];
+                        }
                         g_frame_ready = true;
                     }
                     s_in_frame = false;
@@ -187,7 +195,9 @@ void cec_rx_enable_ack(bool enable) {
 }
 
 bool cec_rx_poll_frame(cec_frame_t* out) {
-    if (!g_frame_ready) return false;
+    if (!g_frame_ready) {
+        return false;
+    }
 
     uint32_t save = save_and_disable_interrupts();
     if (out) {

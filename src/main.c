@@ -70,8 +70,9 @@ static bool tx_set_osd_name(uint8_t dst, const char *name) {
     uint8_t n = 0;
     m[n++] = hdr(CEC_LA, dst);
     m[n++] = CEC_OP_SET_OSD_NAME;
-    while (*name && n < sizeof m)
+    while (*name && n < sizeof m) {
         m[n++] = (uint8_t)*name++;
+    }
     return cec_tx_send(m, n);
 }
 
@@ -133,8 +134,7 @@ static void ri_power_off(device_state_t *s) {
 static void ri_power_on(device_state_t *s, const char *tag) {
     if (is_nil_time(s->last_on)
         || absolute_time_diff_us(s->last_on, get_absolute_time()) > RI_DEBOUNCE_US) {
-        printf("=> RI Power ON (0x%03X)%s\n",
-               (unsigned)RI_POWER_ON, tag ? tag : "");
+        printf("=> RI Power ON (0x%03X)%s\n", (unsigned)RI_POWER_ON, tag ? tag : "");
         ri_tx_send(RI_POWER_ON);
         sleep_ms(RI_INPUT_SEL_DELAY_MS);
         printf("=> RI Input Sel (0x%03X)\n", (unsigned)RI_INPUT_SEL);
@@ -160,7 +160,9 @@ static void ri_set_mute(device_state_t *s, bool mute) {
 static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
     // ログ出力
     printf("CEC RX len=%u:", f->len);
-    for (uint8_t i = 0; i < f->len; i++) printf(" %02X", f->bytes[i]);
+    for (uint8_t i = 0; i < f->len; i++) {
+        printf(" %02X", f->bytes[i]);
+    }
     printf("\n");
 
     if (f->len < 2) {
@@ -173,13 +175,13 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
     uint8_t src = (header >> 4) & 0x0F;
     uint8_t dst = header & 0x0F;
 
-    printf("  opcode=0x%02X (%s) src=%u dst=%u\n",
-           opcode, cec_opcode_name(opcode), src, dst);
+    printf("  opcode=0x%02X (%s) src=%u dst=%u\n", opcode, cec_opcode_name(opcode), src, dst);
 
     // ======== Broadcast メッセージ ========
     if (dst == CEC_BR) {
-        if (opcode == CEC_OP_STANDBY)
+        if (opcode == CEC_OP_STANDBY) {
             ri_power_off(s);
+        }
         printf("\n");
         return;
     }
@@ -198,8 +200,7 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
 
     case CEC_OP_FEATURE_ABORT: // Feature Abort (受信)
         if (f->len >= 4) {
-            printf("  Remote Feature Abort: opcode=0x%02X reason=0x%02X\n",
-                   f->bytes[2], f->bytes[3]);
+            printf("  Remote Feature Abort: opcode=0x%02X reason=0x%02X\n", f->bytes[2], f->bytes[3]);
         }
         break;
 
@@ -238,47 +239,44 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
         bool on = (f->len >= 4);
         s->system_audio_mode = on;
         ok = tx_set_system_audio_mode(on);
-        printf("  System Audio Mode Request -> %s: %s\n",
-               on ? "ON" : "OFF", ok ? "OK" : "FAIL");
+        printf("  System Audio Mode Request -> %s: %s\n", on ? "ON" : "OFF", ok ? "OK" : "FAIL");
 
         // SAM ON = TVがオーディオ出力先としてこのデバイスを使う → 電源ON
-        if (on && !s->power_on)
+        if (on && !s->power_on) {
             ri_power_on(s, " [SAM]");
+        }
         break;
     }
 
     case CEC_OP_SET_SYSTEM_AUDIO_MODE: // directed to us
         if (f->len >= 3) {
             s->system_audio_mode = (f->bytes[2] != 0);
-            printf("  System Audio Mode = %u\n",
-                   s->system_audio_mode ? 1 : 0);
+            printf("  System Audio Mode = %u\n", s->system_audio_mode ? 1 : 0);
             ok = tx_system_audio_mode_status(src, s->system_audio_mode);
-            printf("  TX System Audio Mode Status: %s\n",
-                   ok ? "OK" : "FAIL");
+            printf("  TX System Audio Mode Status: %s\n", ok ? "OK" : "FAIL");
         }
         break;
 
     case CEC_OP_GIVE_SYSTEM_AUDIO_MODE_STATUS:
         ok = tx_system_audio_mode_status(src, s->system_audio_mode);
-        printf("  TX System Audio Mode Status (%u): %s\n",
-               s->system_audio_mode ? 1 : 0, ok ? "OK" : "FAIL");
+        printf("  TX System Audio Mode Status (%u): %s\n", s->system_audio_mode ? 1 : 0, ok ? "OK" : "FAIL");
         break;
 
     case CEC_OP_GIVE_AUDIO_STATUS:
         ok = tx_report_audio_status(src);
-        printf("  TX Report Audio Status (vol=%u mute=%u): %s\n",
-               s->volume, s->mute ? 1 : 0, ok ? "OK" : "FAIL");
+        printf("  TX Report Audio Status (vol=%u mute=%u): %s\n", s->volume, s->mute ? 1 : 0, ok ? "OK" : "FAIL");
         break;
 
     case CEC_OP_SET_AUDIO_VOLUME_LEVEL: { // CEC 2.0
         if (f->len >= 3) {
             uint8_t new_vol = f->bytes[2] & 0x7F;
             uint8_t old_vol = s->volume;
-            if (new_vol > 100) new_vol = 100;
+            if (new_vol > 100) {
+                new_vol = 100;
+            }
             s->volume = new_vol;
             s->mute = false;
-            printf("  Set Audio Volume Level: %u -> %u (no RI cmd)\n",
-                   old_vol, s->volume);
+            printf("  Set Audio Volume Level: %u -> %u (no RI cmd)\n", old_vol, s->volume);
         }
         break;
     }
@@ -290,17 +288,19 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
             uint8_t ui = f->bytes[2];
             switch (ui) {
             case 0x41: // Volume Up
-                if (s->volume < 100) s->volume += 2;
+                if (s->volume < 100) {
+                    s->volume += 2;
+                }
                 s->mute = false;
-                printf("=> RI Vol Up (0x%03X) vol=%u\n",
-                       (unsigned)RI_VOL_UP, s->volume);
+                printf("=> RI Vol Up (0x%03X) vol=%u\n", (unsigned)RI_VOL_UP, s->volume);
                 ri_tx_send(RI_VOL_UP);
                 break;
             case 0x42: // Volume Down
-                if (s->volume >= 2) s->volume -= 2;
+                if (s->volume >= 2) {
+                    s->volume -= 2;
+                }
                 s->mute = false;
-                printf("=> RI Vol Down (0x%03X) vol=%u\n",
-                       (unsigned)RI_VOL_DOWN, s->volume);
+                printf("=> RI Vol Down (0x%03X) vol=%u\n", (unsigned)RI_VOL_DOWN, s->volume);
                 ri_tx_send(RI_VOL_DOWN);
                 break;
             case 0x43: // Mute Toggle
@@ -351,8 +351,7 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
     // 未対応 opcode → Feature Abort を返す
     if (!handled) {
         ok = tx_feature_abort(src, opcode, CEC_ABORT_UNRECOGNIZED);
-        printf("  TX Feature Abort (0x%02X unrecognized): %s\n",
-               opcode, ok ? "OK" : "FAIL");
+        printf("  TX Feature Abort (0x%02X unrecognized): %s\n", opcode, ok ? "OK" : "FAIL");
     }
 
     printf("\n");
@@ -365,9 +364,9 @@ int main(void) {
 
     // USB CDC 接続待ち (最大5秒)
     absolute_time_t deadline = make_timeout_time_ms(5000);
-    while (!stdio_usb_connected()
-           && absolute_time_diff_us(get_absolute_time(), deadline) > 0)
+    while (!stdio_usb_connected() && absolute_time_diff_us(get_absolute_time(), deadline) > 0) {
         sleep_ms(10);
+    }
 
     printf("\nCEC->RI bridge (Audio System)\n");
     printf("CEC GPIO=%d  RI GPIO=%d\n", CEC_GPIO, RI_GPIO);
