@@ -28,41 +28,41 @@ set(PICO_BOARD pico2 CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(hdmi-cec-to-onkyo-ri C CXX ASM)
+project(hdmi-cec-to-onkyo-ri-bridge C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 file(GLOB_RECURSE SOURCE src/*.c)
-add_executable(hdmi-cec-to-onkyo-ri ${SOURCE})
+add_executable(hdmi-cec-to-onkyo-ri-bridge ${SOURCE})
 
-pico_generate_pio_header(hdmi-cec-to-onkyo-ri
+pico_generate_pio_header(hdmi-cec-to-onkyo-ri-bridge
     ${CMAKE_CURRENT_LIST_DIR}/src/cec/cec_tx.pio
 )
 
-pico_set_program_name(hdmi-cec-to-onkyo-ri "hdmi-cec-to-onkyo-ri")
-pico_set_program_version(hdmi-cec-to-onkyo-ri "0.1")
+pico_set_program_name(hdmi-cec-to-onkyo-ri-bridge "hdmi-cec-to-onkyo-ri-bridge")
+pico_set_program_version(hdmi-cec-to-onkyo-ri-bridge "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(hdmi-cec-to-onkyo-ri 0)
-pico_enable_stdio_usb(hdmi-cec-to-onkyo-ri 1)
+pico_enable_stdio_uart(hdmi-cec-to-onkyo-ri-bridge 0)
+pico_enable_stdio_usb(hdmi-cec-to-onkyo-ri-bridge 1)
 
 # Add the standard library to the build
-target_link_libraries(hdmi-cec-to-onkyo-ri
+target_link_libraries(hdmi-cec-to-onkyo-ri-bridge
     pico_stdlib
 )
 
 # Add the standard include files to the build
-target_include_directories(hdmi-cec-to-onkyo-ri PRIVATE
+target_include_directories(hdmi-cec-to-onkyo-ri-bridge PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
 )
 
 # Add any user requested libraries
-target_link_libraries(hdmi-cec-to-onkyo-ri
+target_link_libraries(hdmi-cec-to-onkyo-ri-bridge
     hardware_gpio
     hardware_pio
     hardware_watchdog
 )
 
-pico_add_extra_outputs(hdmi-cec-to-onkyo-ri)
+pico_add_extra_outputs(hdmi-cec-to-onkyo-ri-bridge)
