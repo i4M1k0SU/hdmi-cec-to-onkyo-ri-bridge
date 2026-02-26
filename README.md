@@ -36,9 +36,9 @@ Raspberry Pi Pico / Pico 2 用ファームウェア。TV の HDMI CEC コマン�
 HDMI コネクタ                    Raspberry Pi Pico / Pico 2
 ┌────────────┐                 ┌──────────────────────┐
 │ Pin 18 +5V ┼── D1 (1N5819) ►├─ VSYS               │
-│ Pin 13 CEC ┼── R1 (220Ω) ───├─ GP9                 │
+│ Pin 13 CEC ┼── R1 (220Ω) ───├─ GP1                 │
 │ Pin 17 GND ┼─────────────────├─ GND                 │
-└────────────┘                 │              GP7 ────├── R2 (100Ω) ── RI Tip (3.5mm)
+└────────────┘                 │              GP0 ────├── R2 (100Ω) ── RI Tip (3.5mm)
                                │                      │               RI Sleeve ── GND
                                └──────────────────────┘
 ```
@@ -52,8 +52,8 @@ HDMI コネクタ                    Raspberry Pi Pico / Pico 2
 `src/config.h` で GPIO ピン割り当てとインジケータ LED を設定する。
 
 ```c
-#define CEC_GPIO        9   // HDMI CEC ライン
-#define RI_GPIO         7   // ONKYO RI ライン
+#define CEC_GPIO        1   // HDMI CEC ライン
+#define RI_GPIO         0   // ONKYO RI ライン
 
 #define LED_CEC_RX_GPIO 17  // CEC 受信インジケータ
 #define LED_CEC_TX_GPIO 16  // CEC 送信インジケータ

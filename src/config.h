@@ -6,8 +6,8 @@
 
 // ---- GPIO ピン割り当て ----
 
-#define CEC_GPIO   9   // HDMI CEC ライン (オープンドレイン)
-#define RI_GPIO    7   // ONKYO RI ライン (3.5mm Tip)
+#define CEC_GPIO   1   // HDMI CEC ライン (オープンドレイン)
+#define RI_GPIO    0   // ONKYO RI ライン (3.5mm Tip)
 
 // ---- インジケータ LED ----
 // 0 を設定すると LED 機能を無効化 (通常の Pico / Pico 2 向け)
