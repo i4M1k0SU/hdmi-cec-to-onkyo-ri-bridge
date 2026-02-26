@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HDMI CEC → Onkyo RI プロトコルブリッジ。Raspberry Pi Pico / Pico 2 上で動作し、TV からの CEC コマンド（音量・電源・ミュート等）を Onkyo アンプの RI コマンドに変換する。CEC 論理アドレス 5（Audio System）として振る舞う。
+HDMI CEC → ONKYO RI プロトコルブリッジ。Raspberry Pi Pico / Pico 2 上で動作し、TV からの CEC コマンド（音量・電源・ミュート等）を ONKYO アンプの RI コマンドに変換する。CEC 論理アドレス 5（Audio System）として振る舞う。
 
 ## Build
 

@@ -1,16 +1,17 @@
-# HDMI CEC to Onkyo RI Bridge
+# HDMI CEC to ONKYO RI Bridge
 
-Raspberry Pi Pico / Pico 2 用ファームウェア。TV の HDMI CEC コマンドを Onkyo アンプの RI (Remote Interactive) コマンドに変換し、CEC 非対応の Onkyo アンプを TV のリモコンで制御できるようにする。
+Raspberry Pi Pico / Pico 2 用ファームウェア。TV の HDMI CEC コマンドを ONKYO アンプの RI (Remote Interactive) コマンドに変換し、CEC 非対応の ONKYO アンプを TV のリモコンで制御できるようにする。
 
 ## 機能
 
 - CEC 論理アドレス 5 (Audio System) としてバスに参加
 - 起動時の論理アドレスネゴシエーション (衝突時は fallback)
-- System Audio Mode 対応 — TV が SAM を有効化すると Onkyo を自動電源 ON
+- System Audio Mode 対応 — TV が SAM を有効化すると ONKYO アンプを自動電源 ON
 - 音量 Up/Down、ミュート ON/OFF/トグルを RI コマンドに変換
 - 電源 ON/OFF (Standby) を RI コマンドに変換 (デバウンス付き)
 - CEC TX: PIO ハードウェアによるビットバング + バイト単位 ACK 検出 + 自動リトライ
 - CEC RX: GPIO エッジ割り込みによるビットデコード + 自動 ACK 応答
+- インジケータ LED 対応 (CEC RX / CEC TX / RI TX で個別点滅)
 - 5 秒ウォッチドッグタイマー
 - USB CDC シリアルでデバッグログ出力
 
@@ -46,7 +47,30 @@ HDMI コネクタ                    Raspberry Pi Pico / Pico 2
 - **R1 (220Ω)**: CEC ライン保護抵抗
 - **R2 (100Ω)**: RI ライン保護抵抗
 
-GPIO 番号は `src/main.c` の `CEC_GPIO` / `RI_GPIO` で変更可能。
+## 設定
+
+`src/config.h` で GPIO ピン割り当てとインジケータ LED を設定する。
+
+```c
+#define CEC_GPIO        9   // HDMI CEC ライン
+#define RI_GPIO         7   // ONKYO RI ライン
+
+#define LED_CEC_RX_GPIO 17  // CEC 受信インジケータ
+#define LED_CEC_TX_GPIO 16  // CEC 送信インジケータ
+#define LED_RI_TX_GPIO  25  // RI 送信インジケータ
+```
+
+LED の GPIO を `0` に設定すると LED 機能が無効化される。通常の Pico / Pico 2 など LED が搭載されていないボードではすべて `0` にすること。
+
+### インジケータ LED
+
+個別に制御可能な LED を 3 つ持つボード (例: XIAO RP2040) で動作確認済み。イベント発生時に該当 LED が短く (80ms) 点滅する。アクティブ LOW を想定。
+
+| チャンネル | トリガー | XIAO RP2040 での色 |
+|---|---|---|
+| CEC RX | CEC フレーム受信時 | Red (GP17) |
+| CEC TX | CEC フレーム送信時 | Green (GP16) |
+| RI TX | RI コマンド送信時 | Blue (GP25) |
 
 ## ビルド
 
@@ -93,7 +117,7 @@ CEC RX len=3: 05 70 10 00
 
 ## RI コマンドコード
 
-[参考: Onkyo RI コード一覧](https://gist.github.com/i4M1k0SU/28cb2893a50efe4e052c1de504d60032)
+[参考: ONKYO RI コード一覧](https://gist.github.com/i4M1k0SU/28cb2893a50efe4e052c1de504d60032)
 
 | コード | 機能 |
 |--------|------|
