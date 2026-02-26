@@ -9,9 +9,8 @@
 #include "cec/cec_opcode.h"
 #include "ri/ri_tx.h"
 #include "ri/ri_code.h"
-
-#define CEC_GPIO 6
-#define RI_GPIO  8
+#include "led/led.h"
+#include "config.h"
 
 // HDMI0 = 0.0.0.0
 #define CEC_PHYS_ADDR_HI 0x00
@@ -50,18 +49,24 @@ static inline uint8_t hdr(uint8_t src, uint8_t dst) {
 
 // ---- CEC 送信ヘルパー ----
 
+// CEC TX ラッパー (LED フラッシュ付き)
+static bool cec_tx_send_led(const uint8_t *bytes, size_t len) {
+    led_flash(LED_CH_CEC_TX);
+    return cec_tx_send(bytes, len);
+}
+
 // Report Physical Address (broadcast)
 static bool tx_report_physical_addr(void) {
     uint8_t m[] = { hdr(CEC_LA, CEC_BR), CEC_OP_REPORT_PHYSICAL_ADDRESS,
                     CEC_PHYS_ADDR_HI, CEC_PHYS_ADDR_LO, 0x05 };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Device Vendor ID (broadcast) — vendor = 0x000000 (unknown)
 static bool tx_device_vendor_id(void) {
     uint8_t m[] = { hdr(CEC_LA, CEC_BR), CEC_OP_DEVICE_VENDOR_ID,
                     0x00, 0x00, 0x00 };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Set OSD Name
@@ -73,56 +78,62 @@ static bool tx_set_osd_name(uint8_t dst, const char *name) {
     while (*name && n < sizeof m) {
         m[n++] = (uint8_t)*name++;
     }
-    return cec_tx_send(m, n);
+    return cec_tx_send_led(m, n);
 }
 
 // CEC Version — 1.4 = 0x05
 static bool tx_cec_version(uint8_t dst) {
     uint8_t m[] = { hdr(CEC_LA, dst), CEC_OP_CEC_VERSION, 0x05 };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Report Power Status — 0x00=ON, 0x01=Standby
 static bool tx_report_power_status(uint8_t dst) {
     uint8_t m[] = { hdr(CEC_LA, dst), CEC_OP_REPORT_POWER_STATUS,
                     (uint8_t)(g_state.power_on ? 0x00 : 0x01) };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Feature Abort
 static bool tx_feature_abort(uint8_t dst, uint8_t opcode, uint8_t reason) {
     uint8_t m[] = { hdr(CEC_LA, dst), CEC_OP_FEATURE_ABORT, opcode, reason };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Set System Audio Mode (broadcast)
 static bool tx_set_system_audio_mode(bool on) {
     uint8_t m[] = { hdr(CEC_LA, CEC_BR), CEC_OP_SET_SYSTEM_AUDIO_MODE,
                     on ? 0x01 : 0x00 };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // System Audio Mode Status (directed)
 static bool tx_system_audio_mode_status(uint8_t dst, bool on) {
     uint8_t m[] = { hdr(CEC_LA, dst), CEC_OP_SYSTEM_AUDIO_MODE_STATUS,
                     on ? 0x01 : 0x00 };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // Report Audio Status (directed)
 static bool tx_report_audio_status(uint8_t dst) {
     uint8_t m[] = { hdr(CEC_LA, dst), CEC_OP_REPORT_AUDIO_STATUS,
                     (uint8_t)((g_state.mute ? 0x80 : 0x00) | (g_state.volume & 0x7F)) };
-    return cec_tx_send(m, sizeof m);
+    return cec_tx_send_led(m, sizeof m);
 }
 
 // ---- RI アクションヘルパー ----
+
+// RI TX ラッパー (LED フラッシュ付き)
+static bool ri_tx_send_led(uint16_t command) {
+    led_flash(LED_CH_RI_TX);
+    return ri_tx_send(command);
+}
 
 static void ri_power_off(device_state_t *s) {
     if (is_nil_time(s->last_off)
         || absolute_time_diff_us(s->last_off, get_absolute_time()) > RI_DEBOUNCE_US) {
         printf("=> RI Power OFF (0x%03X)\n", (unsigned)RI_POWER_OFF);
-        ri_tx_send(RI_POWER_OFF);
+        ri_tx_send_led(RI_POWER_OFF);
         s->last_off          = get_absolute_time();
         s->power_on          = false;
         s->system_audio_mode = false;
@@ -135,10 +146,10 @@ static void ri_power_on(device_state_t *s, const char *tag) {
     if (is_nil_time(s->last_on)
         || absolute_time_diff_us(s->last_on, get_absolute_time()) > RI_DEBOUNCE_US) {
         printf("=> RI Power ON (0x%03X)%s\n", (unsigned)RI_POWER_ON, tag ? tag : "");
-        ri_tx_send(RI_POWER_ON);
+        ri_tx_send_led(RI_POWER_ON);
         sleep_ms(RI_INPUT_SEL_DELAY_MS);
         printf("=> RI Input Sel (0x%03X)\n", (unsigned)RI_INPUT_SEL);
-        ri_tx_send(RI_INPUT_SEL);
+        ri_tx_send_led(RI_INPUT_SEL);
         s->last_on  = get_absolute_time();
         s->power_on = true;
     }
@@ -148,16 +159,19 @@ static void ri_set_mute(device_state_t *s, bool mute) {
     s->mute = mute;
     if (mute) {
         printf("=> RI Mute (0x%03X)\n", (unsigned)RI_MUTE);
-        ri_tx_send(RI_MUTE);
+        ri_tx_send_led(RI_MUTE);
     } else {
         printf("=> RI Unmute (0x%03X)\n", (unsigned)RI_UNMUTE);
-        ri_tx_send(RI_UNMUTE);
+        ri_tx_send_led(RI_UNMUTE);
     }
 }
 
 // ---- CEC フレーム処理 ----
 
 static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
+    // CEC RX インジケータ
+    led_flash(LED_CH_CEC_RX);
+
     // ログ出力
     printf("CEC RX len=%u:", f->len);
     for (uint8_t i = 0; i < f->len; i++) {
@@ -293,7 +307,7 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
                 }
                 s->mute = false;
                 printf("=> RI Vol Up (0x%03X) vol=%u\n", (unsigned)RI_VOL_UP, s->volume);
-                ri_tx_send(RI_VOL_UP);
+                ri_tx_send_led(RI_VOL_UP);
                 break;
             case 0x42: // Volume Down
                 if (s->volume >= 2) {
@@ -301,7 +315,7 @@ static void handle_cec_frame(const cec_frame_t *f, device_state_t *s) {
                 }
                 s->mute = false;
                 printf("=> RI Vol Down (0x%03X) vol=%u\n", (unsigned)RI_VOL_DOWN, s->volume);
-                ri_tx_send(RI_VOL_DOWN);
+                ri_tx_send_led(RI_VOL_DOWN);
                 break;
             case 0x43: // Mute Toggle
                 ri_set_mute(s, !s->mute);
@@ -371,6 +385,7 @@ int main(void) {
     printf("\nCEC->RI bridge (Audio System)\n");
     printf("CEC GPIO=%d  RI GPIO=%d\n", CEC_GPIO, RI_GPIO);
 
+    led_init(LED_CEC_RX_GPIO, LED_CEC_TX_GPIO, LED_RI_TX_GPIO);
     cec_tx_init(CEC_GPIO);
     cec_rx_init(CEC_GPIO);
     cec_rx_set_logical_addr(CEC_LA);
@@ -412,6 +427,7 @@ int main(void) {
     // ---- メッセージループ ----
     while (true) {
         watchdog_update();
+        led_update();
 
         cec_frame_t f = {0};
         if (!cec_rx_poll_frame(&f)) {
